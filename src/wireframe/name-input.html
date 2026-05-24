@@ -1,0 +1,749 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow, noarchive" />
+    <title>氏名入力フォーム — 地区ナイト</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <style>
+      /* ── Name-Input Frame ── */
+      .ni-frame {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        max-width: 430px;
+        min-height: 100vh;
+        margin: 0 auto;
+        background: var(--paper);
+        box-shadow: 0 18px 60px rgba(20,36,72,.18);
+      }
+
+      /* ── Page Title (match app) ── */
+      .ni-page-title {
+        margin: 0 0 14px;
+        color: var(--blue-dark);
+        font-size: 24px;
+        font-weight: 800;
+        text-align: center;
+      }
+      .ni-page-sub {
+        margin: -8px 0 14px;
+        color: var(--muted);
+        font-size: 14px;
+        text-align: center;
+      }
+
+      /* ── Club Search (match csel style) ── */
+      .ni-search-input {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        min-height: 56px;
+        padding: 12px 16px;
+        border: 2px solid var(--line);
+        border-radius: 14px;
+        background: var(--paper);
+        color: var(--ink);
+        font-size: 18px;
+        font-weight: 700;
+        outline: none;
+      }
+      .ni-search-input:focus { border-color: var(--blue); }
+      .ni-search-input::placeholder { color: var(--muted); font-weight: 600; }
+
+      .ni-club-list {
+        list-style: none;
+        margin: 0 0 14px;
+        padding: 0;
+        max-height: 360px;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        border: 2px solid var(--line);
+        border-radius: var(--radius-md);
+        background: var(--paper);
+      }
+      .ni-club-item {
+        display: flex;
+        align-items: center;
+        min-height: 50px;
+        padding: 10px 18px;
+        border-bottom: 1px solid var(--wash);
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--ink);
+        cursor: pointer;
+      }
+      .ni-club-item:last-child { border-bottom: none; }
+      .ni-club-item:active { background: var(--gold-wash); }
+      .ni-club-item.selected {
+        background: var(--gold-wash);
+        color: var(--blue-dark);
+        font-weight: 700;
+        border-left: 4px solid var(--gold);
+      }
+      .ni-empty { color: var(--muted); font-size: 15px; padding: 14px 18px; }
+
+      /* ── Selected Club Bar (match vsel-box) ── */
+      .ni-selected-club-bar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 14px;
+        padding: 12px 16px;
+        background: var(--gold-wash);
+        border: 2px solid var(--gold);
+        border-radius: 12px;
+      }
+      .ni-selected-club-bar strong {
+        flex: 1 1 auto;
+        font-size: 18px;
+        font-weight: 800;
+        color: var(--blue-dark);
+      }
+      .ni-selected-club-bar button {
+        flex: 0 0 auto;
+        padding: 6px 14px;
+        min-height: 36px;
+        border: 2px solid var(--blue);
+        border-radius: 10px;
+        background: var(--paper);
+        color: var(--blue);
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .ni-selected-club-bar button:active { background: var(--wash); }
+
+      /* ── Table Section ── */
+      .ni-table-section { margin-bottom: 18px; }
+      .ni-table-label {
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+        margin: 0 0 8px;
+        padding: 6px 0;
+        border-bottom: 2px solid var(--blue);
+        color: var(--blue-dark);
+        font-size: 16px;
+        font-weight: 800;
+      }
+
+      /* ── Seat Row ── */
+      .ni-seat-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 4px;
+        border-bottom: 1px solid var(--wash);
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background .12s;
+      }
+      .ni-seat-row:last-child { border-bottom: none; }
+      .ni-seat-row:active { background: var(--wash); }
+      .ni-seat-row.is-focused {
+        background: var(--gold-wash);
+        border-color: var(--gold);
+      }
+
+      .ni-seat-num {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 28px;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: var(--blue);
+        color: var(--paper);
+        font-size: 13px;
+        font-weight: 800;
+      }
+      .ni-seat-row.is-focused .ni-seat-num {
+        background: var(--gold);
+        color: var(--paper);
+      }
+
+      .ni-seat-name {
+        flex: 0 0 80px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--ink);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .ni-name-inputs {
+        flex: 1 1 auto;
+        display: flex;
+        gap: 6px;
+        min-width: 0;
+      }
+      .ni-name-field {
+        flex: 1 1 0;
+        min-width: 0;
+      }
+      .ni-name-field input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 8px 10px;
+        border: 2px solid var(--line);
+        border-radius: 10px;
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--ink);
+        background: var(--paper);
+        outline: none;
+      }
+      .ni-name-field input:focus { border-color: var(--blue); }
+      .ni-name-field input.has-value {
+        background: var(--gold-wash);
+        border-color: var(--gold);
+      }
+
+      .ni-clear-btn {
+        flex: 0 0 auto;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border: 2px solid var(--line);
+        border-radius: 8px;
+        background: var(--paper);
+        color: var(--muted);
+        font-size: 14px;
+        font-weight: 800;
+        cursor: pointer;
+      }
+      .ni-clear-btn:active { background: #fce8e6; border-color: #ea4335; color: #c5221f; }
+
+      /* ── Buttons (match app buttons) ── */
+      .ni-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin: 18px 0;
+      }
+      .ni-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 48px;
+        padding: 10px 20px;
+        border-radius: var(--radius-md);
+        font-size: 16px;
+        font-weight: 800;
+        cursor: pointer;
+        border: none;
+      }
+      .ni-btn-primary {
+        background: var(--blue);
+        color: var(--paper);
+        flex: 1 1 auto;
+      }
+      .ni-btn-primary:active { background: var(--blue-dark); }
+      .ni-btn-secondary {
+        background: var(--wash);
+        color: var(--ink);
+        border: 2px solid var(--line);
+      }
+      .ni-btn-secondary:active { background: var(--paper); }
+      .ni-btn-danger {
+        background: var(--paper);
+        color: #c5221f;
+        border: 2px solid #ea4335;
+      }
+      .ni-btn-danger:active { background: #fce8e6; }
+      .ni-btn-venue {
+        background: var(--paper);
+        color: var(--blue);
+        border: 2px solid var(--blue);
+        flex: 1 1 auto;
+      }
+      .ni-btn-venue:active { background: var(--wash); }
+
+      /* ── Inline Venue Map ── */
+      .ni-map-panel {
+        margin: 14px 0;
+        border: 2px solid var(--line);
+        border-radius: 14px;
+        background: var(--wash);
+        overflow: hidden;
+      }
+      .ni-map-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 14px;
+        background: var(--blue);
+        color: var(--paper);
+        font-size: 15px;
+        font-weight: 800;
+        cursor: pointer;
+      }
+      .ni-map-header-arrow {
+        font-size: 12px;
+        transition: transform .2s;
+      }
+      .ni-map-header-arrow.is-open { transform: rotate(180deg); }
+
+      .ni-map-body { padding: 10px; }
+
+      .ni-map-selection {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        margin-bottom: 10px;
+        background: var(--gold-wash);
+        border: 2px solid var(--gold);
+        border-radius: 10px;
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--blue-dark);
+      }
+      .ni-map-selection-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 24px;
+        height: 24px;
+        padding: 0 6px;
+        border-radius: 6px;
+        background: var(--gold);
+        color: var(--paper);
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .ni-complete-message {
+        text-align: center;
+        padding: 32px 16px;
+        font-size: 17px;
+        font-weight: 600;
+        color: var(--ink);
+        line-height: 1.8;
+      }
+      .ni-complete-message p { margin: 0 0 8px; }
+
+      .ni-map-scroll {
+        overflow: auto;
+        -webkit-overflow-scrolling: touch;
+        touch-action: pan-x pan-y;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: var(--paper);
+      }
+      .ni-map-inner {
+        position: relative;
+        min-width: 520px;
+        padding: 60px 60px 70px;
+      }
+      /* Area headings: ステージ側, Sky Lounge */
+      .ni-map-label {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        margin: 0 auto 12px;
+        padding: 3px 10px;
+        border-radius: 6px;
+        background: var(--blue);
+        color: var(--paper);
+        font-size: 11px;
+        font-weight: 800;
+        text-align: center;
+        width: fit-content;
+      }
+      .ni-map-label-sky {
+        margin-top: -11px;
+        margin-bottom: 12px;
+        position: relative;
+        z-index: 1;
+        padding: 3px 14px;
+        background: #6b4a00;
+      }
+      /* Facility markers: トイレ, 出入り口 */
+      .ni-map-markers {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+      .ni-map-marker {
+        position: absolute;
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        padding: 2px 7px;
+        border-radius: 6px;
+        background: #e8f0fe;
+        border: 1px solid #aec4e8;
+        color: var(--blue);
+        font-size: 10px;
+        font-weight: 800;
+        white-space: nowrap;
+        box-shadow: 0 1px 4px rgba(23,69,143,.10);
+      }
+      .ni-map-marker-toilet { left: 20px; bottom: 232px; }
+      .ni-map-marker-entrance-top { right: 8px; top: 82px; }
+      .ni-map-marker-entrance-bottom { right: 8px; bottom: 292px; }
+      .ni-map-row {
+        display: grid;
+        gap: 6px;
+        margin-bottom: 6px;
+        justify-items: center;
+      }
+      .ni-map-row-5 { grid-template-columns: repeat(5, 1fr); }
+      .ni-map-row-6 { grid-template-columns: repeat(6, 1fr); }
+      .ni-map-row-4 { grid-template-columns: repeat(4, 1fr); max-width: 280px; }
+      .ni-map-row-sky { margin: 0 auto; }
+      .ni-map-row-2 { grid-template-columns: repeat(2, 1fr); max-width: 140px; }
+      .ni-map-row-3 { grid-template-columns: repeat(3, 1fr); max-width: 200px; }
+      .ni-sky-layout { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 0 auto; max-width: 280px; }
+      .ni-sky-stage-label { writing-mode: vertical-rl; font-size: 11px; font-weight: 800; color: var(--paper); background: #6b4a00; padding: 5px 3px; border-radius: 5px; letter-spacing: 2px; line-height: 1; flex: 0 0 auto; }
+      .ni-sky-grid {
+        flex: 1 1 auto;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+        justify-items: center;
+        max-width: 200px;
+      }
+      .ni-sky-spacer { width: 50px; height: 50px; }
+      .ni-map-main { margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px dashed rgba(247,168,27,0.45); }
+
+      .ni-map-cell {
+        display: grid;
+        place-items: center;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: var(--paper);
+        border: 2px solid var(--line);
+        font-size: 14px;
+        font-weight: 800;
+        color: var(--blue-dark);
+        transition: box-shadow .15s;
+      }
+      .ni-map-cell.is-highlighted {
+        background: var(--gold-wash);
+        border-color: var(--gold);
+        color: #6b4a00;
+        box-shadow: 0 0 0 3px rgba(247,168,27,.3);
+      }
+      .ni-map-cell.is-selected {
+        background: var(--gold);
+        border-color: #c4850e;
+        color: var(--paper);
+        transform: scale(1.15);
+        box-shadow: 0 0 0 5px rgba(247,168,27,.35);
+        z-index: 5;
+      }
+
+      /* Seat chips around selected table — fixed 1-10 positions */
+      .ni-seat-chips {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        z-index: 8;
+        pointer-events: none;
+      }
+      .ni-seat-chip {
+        position: absolute;
+        display: grid;
+        place-items: center;
+        width: 20px;
+        height: 20px;
+        margin: -10px 0 0 -10px;
+        border-radius: 50%;
+        font-size: 10px;
+        font-weight: 800;
+        box-shadow: 0 1px 4px rgba(0,0,0,.1);
+      }
+      /* Default: muted/non-relevant seat */
+      .ni-seat-chip.is-muted {
+        background: var(--wash);
+        border: 1px solid var(--line);
+        color: var(--line);
+      }
+      /* Club seat (relevant but not selected, no name) */
+      .ni-seat-chip.is-club {
+        background: var(--gold-wash);
+        border: 2px solid var(--gold);
+        color: #6b4a00;
+      }
+      /* Selected seat */
+      .ni-seat-chip.is-active {
+        background: var(--gold);
+        border: 2px solid #c4850e;
+        color: var(--paper);
+        width: 24px;
+        height: 24px;
+        margin: -12px 0 0 -12px;
+        font-size: 12px;
+        box-shadow: 0 0 0 3px rgba(247,168,27,.4);
+      }
+      /* Seat with entered name */
+      .ni-seat-chip.has-name {
+        background: var(--blue);
+        border: 2px solid var(--blue-dark);
+        color: var(--paper);
+      }
+      /* Entered name AND selected */
+      .ni-seat-chip.has-name.is-active {
+        background: var(--gold);
+        border-color: #c4850e;
+        width: 24px;
+        height: 24px;
+        margin: -12px 0 0 -12px;
+        font-size: 12px;
+        box-shadow: 0 0 0 3px rgba(247,168,27,.4);
+      }
+
+      /* ── Seat Legend Chip (completion screen) ── */
+      .ni-seat-legend-chip {
+        display: inline-grid;
+        place-items: center;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        font-size: 11px;
+        font-weight: 800;
+        line-height: 1;
+        flex-shrink: 0;
+      }
+      .ni-seat-legend-chip.has-name {
+        background: var(--blue);
+        border: 2px solid var(--blue-dark);
+        color: var(--paper);
+      }
+      .ni-seat-legend-chip.is-club {
+        background: var(--gold-wash);
+        border: 2px solid var(--gold);
+        color: #6b4a00;
+      }
+
+      /* ── Confirm / Export ── */
+      .ni-confirm-section { margin-bottom: 14px; }
+      .ni-confirm-row {
+        display: flex;
+        gap: 8px;
+        align-items: baseline;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--wash);
+        font-size: 15px;
+      }
+      .ni-confirm-row:last-child { border-bottom: none; }
+      .ni-confirm-key {
+        flex: 0 0 auto;
+        color: var(--muted);
+        font-size: 14px;
+        font-weight: 700;
+      }
+      .ni-confirm-val {
+        flex: 1 1 auto;
+        color: var(--ink);
+        font-weight: 700;
+      }
+
+      .ni-export-box {
+        background: var(--wash);
+        border: 2px solid var(--line);
+        border-radius: 12px;
+        padding: 12px;
+        font-size: 12px;
+        font-family: monospace;
+        color: var(--ink);
+        white-space: pre;
+        overflow-x: auto;
+        max-height: 200px;
+        overflow-y: auto;
+        margin-bottom: 14px;
+      }
+
+      .ni-notice {
+        font-size: 13px;
+        color: var(--muted);
+        margin: 10px 0;
+        line-height: 1.5;
+        text-align: center;
+      }
+
+      .ni-section-title {
+        font-size: 13px;
+        font-weight: 800;
+        color: var(--muted);
+        margin: 0 0 8px;
+      }
+
+      .ni-entry-count {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 22px;
+        height: 22px;
+        padding: 0 6px;
+        border-radius: 50%;
+        background: var(--blue);
+        color: var(--paper);
+        font-size: 12px;
+        font-weight: 800;
+        margin-left: 6px;
+      }
+
+      /* ── Mobile Bottom Drawer ── */
+      .ni-drawer {
+        display: none;
+      }
+
+      /* ── Desktop Layout ── */
+      @media (min-width: 860px) {
+        .ni-frame {
+          max-width: 1200px;
+          border-radius: 24px;
+          min-height: 0;
+          height: calc(100vh - 56px);
+          overflow: hidden;
+        }
+        .ni-desktop-wrap {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 0;
+          flex: 1 1 auto;
+          min-height: 0;
+        }
+        .ni-main-col {
+          padding: 8px 10px 16px;
+          overflow-y: auto;
+          border-right: 1px solid var(--line);
+        }
+        .ni-side-col {
+          overflow-y: auto;
+          padding: 8px 10px 16px;
+          background: var(--wash);
+        }
+        .ni-page-title { font-size: 18px; margin-bottom: 6px; }
+        .ni-page-sub { margin-bottom: 6px; font-size: 13px; }
+        .ni-selected-club-bar { padding: 6px 10px; margin-bottom: 6px; }
+        .ni-selected-club-bar strong { font-size: 16px; }
+        .ni-table-section { margin-bottom: 8px; }
+        .ni-table-label { margin-bottom: 2px; padding: 3px 0; font-size: 13px; border-bottom-width: 1px; }
+        .ni-seat-row { padding: 3px 2px; gap: 5px; }
+        .ni-seat-num { width: 24px; height: 24px; flex: 0 0 24px; font-size: 11px; }
+        .ni-seat-name { flex: 0 0 70px; font-size: 11px; }
+        .ni-name-field input { padding: 5px 7px; font-size: 14px; border-radius: 8px; }
+        .ni-clear-btn { width: 28px; height: 28px; font-size: 12px; }
+        .ni-actions { margin: 8px 0; }
+        .ni-btn { min-height: 40px; padding: 8px 16px; font-size: 14px; }
+        .ni-map-panel { margin: 6px 0; }
+        .ni-map-scroll { max-height: none; }
+      }
+
+      /* ── Mobile ── */
+      @media (max-width: 859px) {
+        .ni-desktop-wrap {
+          display: flex;
+          flex-direction: column;
+        }
+        .ni-main-col {
+          padding: 16px 14px 28px;
+        }
+        /* Hide aside on mobile — map goes in drawer */
+        .ni-side-col {
+          display: none;
+        }
+        /* Mobile drawer */
+        .ni-drawer {
+          display: block;
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          z-index: 50;
+          background: var(--paper);
+          border-top: 2px solid var(--line);
+          box-shadow: 0 -4px 20px rgba(20,36,72,.12);
+          transition: max-height .3s ease;
+        }
+        .ni-drawer.is-collapsed {
+          max-height: 52px;
+          overflow: hidden;
+        }
+        .ni-drawer.is-expanded {
+          max-height: 70vh;
+          overflow: hidden;
+        }
+        .ni-drawer-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          padding: 8px 14px;
+          background: var(--blue);
+          color: var(--paper);
+          font-size: 13px;
+          font-weight: 800;
+          cursor: pointer;
+          min-height: 52px;
+        }
+        .ni-drawer-header-text {
+          flex: 1 1 auto;
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .ni-drawer-header-arrow {
+          flex: 0 0 auto;
+          font-size: 12px;
+          transition: transform .2s;
+        }
+        .ni-drawer-header-arrow.is-open { transform: rotate(180deg); }
+        .ni-drawer-body {
+          padding: 10px 14px;
+          overflow: auto;
+          -webkit-overflow-scrolling: touch;
+          touch-action: pan-x pan-y;
+          max-height: calc(70vh - 52px);
+        }
+        /* Add bottom padding to main content when drawer is visible */
+        .ni-main-col.has-drawer {
+          padding-bottom: 68px;
+        }
+        .ni-map-scroll { max-height: none; }
+      }
+
+      @media (max-width: 340px) {
+        .ni-search-input { font-size: 16px; min-height: 48px; }
+        .ni-club-item { font-size: 16px; min-height: 44px; }
+        .ni-map-cell { width: 40px; height: 40px; font-size: 12px; }
+        .ni-map-inner { min-width: 420px; padding: 40px 40px 50px; }
+      }
+
+      @media (min-width: 600px) and (max-width: 859px) {
+        .ni-seat-name { flex: 0 0 120px; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="ni-frame" aria-label="氏名入力フォーム">
+      <header class="app-header" id="appHeader">
+        <div class="brand-lockup">
+          <img src="./assets/taipei-logo-2760-integrated.png" alt="Rotary 2760 TAIPEI 2026" class="logo-integrated" />
+        </div>
+      </header>
+      <div class="ni-desktop-wrap">
+        <section id="ni-app" class="ni-main-col" aria-live="polite"></section>
+        <aside id="ni-side" class="ni-side-col"></aside>
+      </div>
+    </main>
+    <div id="ni-drawer" class="ni-drawer"></div>
+    <script src="./name-input.js"></script>
+    <script src="./dev-preview.js"></script>
+  </body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "name": "rotary-district-night-preview",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/build-static.mjs",
+    "check": "node --check src/wireframe/app.js && node --check src/wireframe/name-input.js && node --check src/wireframe/dev-preview.js"
+  }
+}
