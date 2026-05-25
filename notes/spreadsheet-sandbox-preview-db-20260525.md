@@ -28,7 +28,8 @@ Vercel preview用のデータストアとして、Google Spreadsheet + Apps Scri
 - Apps Script template: `tools/apps_script/preview_spreadsheet_api/Code.gs` now has the real `SPREADSHEET_ID`.
 - Apps Script Web App: deployed by owner.
 - Web App URL: https://script.google.com/macros/s/AKfycbyNNHtS2yW0fOTIoPN3f1G43kHUeqzdNmWk2LGw2IXal6mhnzPTUZmSPXABhd-rXm5hRw/exec
-- Vercel preview config: wired locally in `src/wireframe/preview-config.js`; build/push/Vercel redeploy still required before public Vercel uses it.
+- Vercel preview config: wired in `src/wireframe/preview-config.js`, pushed to GitHub, and verified on public Vercel.
+- Browser-origin API check: GET/POST/delete passed against the preview-only Spreadsheet; final test row cleanup confirmed empty state.
 
 ## Required Tabs
 
@@ -139,6 +140,16 @@ Response shape: same as backend handoff memo proposal.
 5. 初回承認画面で、このpreview sandbox用Apps Scriptの権限を承認
 6. デプロイURLを `preview-config.js` の `PREVIEW_APPS_SCRIPT_URL` に設定
 7. Vercel preview再デプロイ
+
+Current deployed URLs:
+
+- Input: https://taipei2026.vercel.app/input?dev=1
+- District Night: https://taipei2026.vercel.app/district-night?dev=1
+
+Deployment commits:
+
+- `7062c58` — Connect preview to Spreadsheet sandbox.
+- `ea6055b` — Harden Apps Script preview POST.
 
 ## Security Notes
 
