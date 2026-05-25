@@ -234,14 +234,14 @@ function memberRowHtml(row, tableId) {
   const person = seatPerson(row);
   const tbl = tableId || row._tableId || "";
   const checked = tbl && isCheckedIn(tbl, row.seat);
+  const longCls = affiliation.length >= 6 ? " is-long-affiliation" : "";
   return `
     <div class="mg-row${checked ? " is-checked-in" : ""}">
       <span class="mg-seat-num">${row.seat}</span>
-      <span class="mg-row-main">
+      <span class="mg-row-main${person ? " has-person" : ""}${longCls}">
         <span class="mg-row-name">${escapeHtml(affiliation)}</span>
         ${person ? `<span class="mg-row-person">${escapeHtml(person)}</span>` : ""}
       </span>
-      ${checked ? `<span class="check-mark"></span>` : ""}
     </div>`;
 }
 
@@ -1175,9 +1175,9 @@ function renderVenueSelectionList() {
         const isSel = String(r.seat) === String(seat);
         const affiliation = escapeHtml(seatAffiliation(r));
         const person = seatPerson(r);
-        const personHtml = person ? `<span class="vsel-person">${escapeHtml(person)}</span>` : "";
+        const personHtml = person ? `<span class="vsel-person">${escapeHtml(person)}</span>` : `<span class="vsel-person">&nbsp;</span>`;
         const ciVsel = isCheckedIn(table, r.seat);
-        html += `<div class="vsel-cell${isSel ? " is-selected" : ""}${ciVsel ? " is-checked-in" : ""}" data-seat-table="${escapeHtml(table)}" data-seat-num="${r.seat}"><span class="vsel-num">${r.seat}</span><span class="vsel-cell-body"><span class="vsel-affiliation">${affiliation}</span>${personHtml}</span>${ciVsel ? `<span class="check-mark"></span>` : ""}</div>`;
+        html += `<div class="vsel-cell${isSel ? " is-selected" : ""}${ciVsel ? " is-checked-in" : ""}" data-seat-table="${escapeHtml(table)}" data-seat-num="${r.seat}">${ciVsel ? `<span class="check-mark check-mark--vsel"></span>` : ""}<span class="vsel-num">${r.seat}</span><span class="vsel-cell-body"><span class="vsel-affiliation">${affiliation}</span>${personHtml}</span></div>`;
       }
       html += `</div>`;
     }
@@ -1195,7 +1195,7 @@ function renderVenueSelectionList() {
         html += `<div class="vsel-tbl-label">${escapeHtml(tblId)}番テーブル</div>`;
         html += `<div class="vsel-grid">`;
         for (const s of tables[tblId]) {
-          html += `<div class="vsel-cell" data-seat-table="${escapeHtml(tblId)}" data-seat-num="${s}"><span class="vsel-num">${s}</span><span class="vsel-cell-body"><span class="vsel-affiliation">${escapeHtml(club)}</span></span></div>`;
+          html += `<div class="vsel-cell" data-seat-table="${escapeHtml(tblId)}" data-seat-num="${s}"><span class="vsel-num">${s}</span><span class="vsel-cell-body"><span class="vsel-affiliation">${escapeHtml(club)}</span><span class="vsel-person">&nbsp;</span></span></div>`;
         }
         html += `</div>`;
       }
@@ -1226,26 +1226,46 @@ function renderVenueSelectionSeatmap() {
   if (count === 0) return `<div class="vsel-box"><div class="vsel-head">${escapeHtml(targetTable)}番テーブル</div><p class="mg-empty">登録なし</p></div>`;
 
   let html = `<div class="vsel-box">`;
-  html += `<div class="vsel-head">${escapeHtml(targetTable)}番テーブル — 席図</div>`;
+  html += `<div class="vsel-head vsel-head--compact">${escapeHtml(targetTable)}番テーブル — 席図</div>`;
   if (club && venueState.source !== "map-tap") {
     html += `<div class="vsel-sub">検索元: ${escapeHtml(club)}</div>`;
   }
 
   /* Visual circular seatmap */
-  const radius = 80;
+  const seatRadius = 90;
+  const labelRadius = 120;
   let chips = "";
+  let labelEls = "";
   for (let i = 0; i < count; i++) {
     const seatNum = i + 1;
     const angle = (i * 360 / count) - 90;
     const rad = angle * Math.PI / 180;
-    const x = Math.cos(rad) * radius;
-    const y = Math.sin(rad) * radius;
+    const x = Math.cos(rad) * seatRadius;
+    const y = Math.sin(rad) * seatRadius;
     const isSel = String(seatNum) === String(seat);
     const row = rows.find((r) => r.seat === seatNum);
+    const affiliation = row ? seatAffiliation(row) : "";
     const person = row ? seatPerson(row) : "";
-    const chipLabel = person ? `<span class="vsm-chip-label">${escapeHtml(person)}</span>` : "";
     const ciChip = isCheckedIn(targetTable, seatNum);
-    chips += `<div class="vsm-chip${isSel ? " is-selected" : ""}${ciChip ? " is-checked-in" : ""}" style="transform:translate(${x.toFixed(1)}px,${y.toFixed(1)}px)" data-seat-table="${escapeHtml(targetTable)}" data-seat-num="${seatNum}"><span class="vsm-chip-num">${seatNum}</span>${chipLabel}</div>`;
+    const isVipTable = !!PERSON_MERGE_SKIP[targetTable];
+    const showVipDisplayName = isVipTable && ciChip && !person && affiliation;
+    /* Seat circle (no label inside) */
+    chips += `<div class="vsm-chip${isSel ? " is-selected" : ""}${ciChip ? " is-checked-in" : ""}" style="transform:translate(${x.toFixed(1)}px,${y.toFixed(1)}px)" data-seat-table="${escapeHtml(targetTable)}" data-seat-num="${seatNum}"><span class="vsm-chip-num">${seatNum}</span></div>`;
+    /* Separate label layer at larger radius */
+    if (person || showVipDisplayName) {
+      const normAngle = ((angle % 360) + 360) % 360;
+      const labelDir = normAngle >= 225 && normAngle < 315 ? "top"
+        : normAngle >= 315 || normAngle < 45 ? "right"
+        : normAngle >= 45 && normAngle < 135 ? "bottom"
+        : "left";
+      const lx = Math.cos(rad) * labelRadius;
+      const ly = Math.sin(rad) * labelRadius;
+      const content = person
+        ? `${affiliation ? `<span class="vsm-lbl-club">${escapeHtml(affiliation)}</span>` : ""}<span class="vsm-lbl-person">${escapeHtml(person)}</span>`
+        : `<span class="vsm-lbl-person">${escapeHtml(affiliation)}</span>`;
+      const selCls = isSel ? " is-selected" : "";
+      labelEls += `<div class="vsm-label vsm-label-${labelDir}${selCls}" style="left:calc(50% + ${lx.toFixed(1)}px);top:calc(50% + ${ly.toFixed(1)}px)">${content}</div>`;
+    }
   }
 
   /* Selected seat detail */
@@ -1279,7 +1299,7 @@ function renderVenueSelectionSeatmap() {
     }
   }
 
-  html += `<div class="vsm-visual">${tableChipsHtml}<div class="vsm-ring">${chips}<div class="vsm-table-center">${escapeHtml(targetTable)}</div></div>${detailHtml}</div>`;
+  html += `<div class="vsm-visual">${tableChipsHtml}<div class="vsm-ring">${chips}${labelEls}<div class="vsm-table-center">${escapeHtml(targetTable)}</div></div>${detailHtml}</div>`;
   html += `</div>`;
 
   return html;
@@ -1440,9 +1460,10 @@ function buildTableMap(highlightSet) {
   return `
     <div class="venue-map-container">
       <p class="map-scroll-hint">指でスクロールできます ↔ ↕</p>
-      <div class="map-scroll-area">
-        <div class="map-inner">
-          <div class="map-label">ステージ側</div>
+      <div class="venue-map-frame">
+        <div class="venue-map-frame-header">ステージ側</div>
+        <div class="map-scroll-area">
+          <div class="map-inner">
           <div class="map-main">${mainRows.join("")}</div>
           <div class="map-markers">
             <span class="map-marker map-marker-toilet">↓ トイレ</span>
@@ -1455,6 +1476,7 @@ function buildTableMap(highlightSet) {
             <div class="sky-grid">${skyCells}</div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   `;
@@ -2201,24 +2223,6 @@ function refreshPersonNamesForScreen(screen) {
   }
 }
 
-/* ── Dev Preview: data reload hook ── */
-
-window.__devReloadPersonNames = function () {
-  loadPersonNamesFromApi()
-    .then(() => {
-      const screen = app.dataset.currentScreen;
-      if (screen === "memberList") renderMemberList();
-      else if (screen === "venue") renderVenue({
-        selectedClub: venueState.club,
-        selectedTable: venueState.table,
-        source: venueState.source,
-        fromMemberList: venueState.fromMemberList,
-      });
-      else if (screen === "checkin") renderCheckin();
-    })
-    .catch((err) => console.warn("dev reload error:", err));
-};
-
 /* ── Check-in (localStorage only) ── */
 
 const CHECKIN_STORAGE_KEY = "rotary_checkin_v1";
@@ -2335,7 +2339,7 @@ function renderCheckin() {
     </div>
     <div class="ci-person-list" id="ciPersonList"></div>
     <div class="action-bar action-bar--inline action-bar--phone" id="ciActions" style="display:none">
-      <button class="btn btn-primary" id="ciConfirmBtn">確認画面へ</button>
+      <button class="btn btn-primary" id="ciConfirmBtn">チェックイン登録</button>
     </div>
 
   `;
@@ -2463,13 +2467,27 @@ function renderCheckin() {
   }
 }
 
-function showCheckinSuccessModal() {
+function checkinDisplayName(s) {
+  return s.personName || s.name || s.club || `${s.tableId}番${s.seat}席`;
+}
+
+function showCheckinSuccessModal(registered, unregistered) {
+  const reg = registered || [];
+  const unreg = unregistered || [];
+  let summaryHtml = "";
+  if (reg.length > 0) {
+    summaryHtml += `<div class="modal-summary">登録: ${reg.map((s) => escapeHtml(checkinDisplayName(s)) + "さん").join("、")}</div>`;
+  }
+  if (unreg.length > 0) {
+    summaryHtml += `<div class="modal-summary">解除: ${unreg.map((s) => escapeHtml(checkinDisplayName(s)) + "さん").join("、")}</div>`;
+  }
   const overlay = document.createElement("div");
   overlay.className = "modal-overlay";
   overlay.innerHTML = `
     <div class="modal-body">
       <div class="modal-icon"><span class="check-mark"></span></div>
-      <div class="modal-title">登録しました</div>
+      <div class="modal-title">更新しました</div>
+      ${summaryHtml}
       <div class="modal-actions">
         <button class="btn btn-secondary" id="modalContinue" type="button">続けてチェックインする</button>
         <button class="btn btn-primary" id="modalHome" type="button">ホームに戻る</button>
@@ -2515,7 +2533,7 @@ function renderCheckinConfirm() {
 
   if (newEntries.length > 0) {
     html += `<div class="ci-confirm-section">
-      <div class="ci-confirm-label">新規チェックイン (${newEntries.length}名)</div>
+      <div class="ci-confirm-label">登録 (${newEntries.length}名)</div>
       <div class="ci-row ci-row-head" aria-hidden="true"><span></span><span>席</span><span>ロータリー</span><span>名前</span></div>`;
     for (const s of newEntries) html += confirmRow(s, false);
     html += `</div>`;
@@ -2523,7 +2541,7 @@ function renderCheckinConfirm() {
 
   if (existingEntries.length > 0) {
     html += `<div class="ci-confirm-section">
-      <div class="ci-confirm-label ci-confirm-label-existing">チェックイン済み (${existingEntries.length}名)</div>
+      <div class="ci-confirm-label ci-confirm-label-existing">解除 (${existingEntries.length}名)</div>
       <div class="ci-row ci-row-head" aria-hidden="true"><span></span><span>席</span><span>ロータリー</span><span>名前</span></div>`;
     for (const s of existingEntries) html += confirmRow(s, true);
     html += `</div>`;
@@ -2531,9 +2549,8 @@ function renderCheckinConfirm() {
 
   html += `
     <div class="action-bar action-bar--inline action-bar--phone">
-      ${existingEntries.length > 0 ? `<button class="btn btn-danger" id="ciUnregister" type="button">チェックイン解除</button>` : ""}
       <button class="btn btn-secondary" id="ciBackToSelect" type="button">選び直す</button>
-      ${newEntries.length > 0 ? `<button class="btn btn-primary" id="ciRegister" type="button">チェックイン登録</button>` : ""}
+      <button class="btn btn-primary" id="ciOkBtn" type="button">OK</button>
     </div>
 
   `;
@@ -2542,36 +2559,23 @@ function renderCheckinConfirm() {
 
   document.getElementById("ciBackToSelect").addEventListener("click", renderCheckin);
 
-  const registerBtn = document.getElementById("ciRegister");
-  if (registerBtn) {
-    registerBtn.addEventListener("click", () => {
-      const data = loadCheckins();
-      for (const s of newEntries) {
-        data[checkinKey(s.tableId, s.seat)] = {
-          tableId: s.tableId,
-          seat: s.seat,
-          club: s.club,
-          name: s.name,
-          timestamp: new Date().toISOString(),
-        };
-      }
-      saveCheckins(data);
-      showCheckinSuccessModal();
-    });
-  }
-
-  const unregisterBtn = document.getElementById("ciUnregister");
-  if (unregisterBtn) {
-    unregisterBtn.addEventListener("click", () => {
-      const data = loadCheckins();
-      for (const s of existingEntries) {
-        delete data[checkinKey(s.tableId, s.seat)];
-      }
-      saveCheckins(data);
-      checkinSelections = {};
-      renderCheckin();
-    });
-  }
+  document.getElementById("ciOkBtn").addEventListener("click", () => {
+    const data = loadCheckins();
+    for (const s of newEntries) {
+      data[checkinKey(s.tableId, s.seat)] = {
+        tableId: s.tableId,
+        seat: s.seat,
+        club: s.club,
+        name: s.name,
+        timestamp: new Date().toISOString(),
+      };
+    }
+    for (const s of existingEntries) {
+      delete data[checkinKey(s.tableId, s.seat)];
+    }
+    saveCheckins(data);
+    showCheckinSuccessModal(newEntries, existingEntries);
+  });
 }
 
 /* ── Init ── */

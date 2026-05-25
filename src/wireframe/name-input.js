@@ -581,19 +581,21 @@ function buildInlineMap() {
       ${mapOpen ? `
         <div class="ni-map-body">
           ${selectionInfo}
-          <div class="ni-map-scroll" id="ni-map-scroll">
-            <div class="ni-map-inner">
-              <div class="ni-map-label">ステージ側</div>
-              <div class="ni-map-main">${mainRows.join("")}</div>
-              <div class="ni-map-markers">
-                <span class="ni-map-marker ni-map-marker-toilet">↓ トイレ</span>
-                <span class="ni-map-marker ni-map-marker-entrance-top">出入り口 →</span>
-                <span class="ni-map-marker ni-map-marker-entrance-bottom">出入り口 →</span>
-              </div>
-              <div class="ni-map-label ni-map-label-sky">Sky Lounge</div>
-              <div class="ni-sky-layout">
-                <div class="ni-sky-stage-label">ステージ</div>
-                <div class="ni-sky-grid">${skyCells}</div>
+          <div class="venue-map-frame">
+            <div class="venue-map-frame-header">ステージ側</div>
+            <div class="ni-map-scroll" id="ni-map-scroll">
+              <div class="ni-map-inner">
+                <div class="ni-map-main">${mainRows.join("")}</div>
+                <div class="ni-map-markers">
+                  <span class="ni-map-marker ni-map-marker-toilet">↓ トイレ</span>
+                  <span class="ni-map-marker ni-map-marker-entrance-top">出入り口 →</span>
+                  <span class="ni-map-marker ni-map-marker-entrance-bottom">出入り口 →</span>
+                </div>
+                <div class="ni-map-label ni-map-label-sky">Sky Lounge</div>
+                <div class="ni-sky-layout">
+                  <div class="ni-sky-stage-label">ステージ</div>
+                  <div class="ni-sky-grid">${skyCells}</div>
+                </div>
               </div>
             </div>
           </div>
@@ -612,7 +614,31 @@ function bindMapEvents(container) {
     });
   }
 
-  /* Map cells are read-only — no click handlers. Selection is controlled only from seat row clicks. */
+  /* Phase 3: Map cell click → sync to editor list (current club tables only) */
+  if (currentScreen === "editor" && selectedClub) {
+    container.querySelectorAll("[data-map-table]").forEach((cell) => {
+      cell.addEventListener("click", () => {
+        const tableId = cell.dataset.mapTable;
+        const eligible = clubEligibleSeats(selectedClub);
+        if (!eligible[tableId]) return; /* ignore non-club tables */
+        focusedTable = tableId;
+        focusedSeat = null;
+        highlightEditorRows();
+        renderSide();
+        /* Scroll left list to the table section */
+        const sectionLabel = niApp.querySelector(`.ni-table-section .ni-table-label`);
+        if (sectionLabel) {
+          const allLabels = niApp.querySelectorAll(".ni-table-label");
+          for (const lbl of allLabels) {
+            if (lbl.textContent.trim() === `${tableId}番テーブル`) {
+              lbl.closest(".ni-table-section").scrollIntoView({ behavior: "smooth", block: "start" });
+              break;
+            }
+          }
+        }
+      });
+    });
+  }
 }
 
 function buildDrawerSummary() {
@@ -625,7 +651,7 @@ function buildDrawerSummary() {
 }
 
 function renderDrawer() {
-  if (currentScreen !== "search" && currentScreen !== "editor") {
+  if (currentScreen !== "search" && currentScreen !== "editor" && currentScreen !== "confirm") {
     niDrawer.innerHTML = "";
     niDrawer.className = "ni-drawer";
     niApp.classList.remove("has-drawer");
@@ -634,15 +660,19 @@ function renderDrawer() {
   niApp.classList.add("has-drawer");
   const arrowCls = drawerExpanded ? " is-open" : "";
   const drawerCls = drawerExpanded ? "ni-drawer is-expanded" : "ni-drawer is-collapsed";
-  const mapHtml = buildInlineMap();
+  const isConfirm = currentScreen === "confirm";
+  const bodyHtml = isConfirm ? buildConfirmSidePreview() : buildInlineMap();
+  const summaryText = isConfirm
+    ? `確認 — ${escHtml(selectedClub || "")} のテーブル`
+    : buildDrawerSummary();
 
   niDrawer.className = drawerCls;
   niDrawer.innerHTML = `
     <div class="ni-drawer-header" id="ni-drawer-toggle">
-      <span class="ni-drawer-header-text">${buildDrawerSummary()}</span>
+      <span class="ni-drawer-header-text">${summaryText}</span>
       <span class="ni-drawer-header-arrow${arrowCls}">▲</span>
     </div>
-    ${drawerExpanded ? `<div class="ni-drawer-body">${mapHtml}</div>` : ""}
+    ${drawerExpanded ? `<div class="ni-drawer-body">${bodyHtml}</div>` : ""}
   `;
 
   const toggle = niDrawer.querySelector("#ni-drawer-toggle");
@@ -653,8 +683,12 @@ function renderDrawer() {
     });
   }
   if (drawerExpanded) {
-    bindMapEvents(niDrawer);
-    if (!focusedTable) centerMapScroll(niDrawer);
+    if (isConfirm) {
+      bindConfirmSideEvents(niDrawer);
+    } else {
+      bindMapEvents(niDrawer);
+      if (!focusedTable) centerMapScroll(niDrawer);
+    }
   }
 }
 
@@ -678,6 +712,11 @@ function renderSide() {
     niSide.innerHTML = buildInlineMap();
     bindMapEvents(niSide);
     if (!focusedTable) centerMapScroll(niSide);
+    return;
+  }
+  if (currentScreen === "confirm") {
+    niSide.innerHTML = buildConfirmSidePreview();
+    bindConfirmSideEvents(niSide);
     return;
   }
   niSide.innerHTML = "";
@@ -785,7 +824,19 @@ function renderSearch() {
   document.getElementById("ni-club-list").addEventListener("click", (e) => {
     const item = e.target.closest(".ni-club-item");
     if (!item || !item.dataset.club) return;
-    openEditorForClub(item.dataset.club);
+    /* Phase 1: click only selects — does NOT navigate */
+    selectedClub = item.dataset.club;
+    /* Update highlight */
+    document.querySelectorAll(".ni-club-item").forEach((el) => {
+      el.classList.toggle("selected", el.dataset.club === selectedClub);
+    });
+    /* Enable button */
+    const btn = document.getElementById("ni-to-editor");
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = `${selectedClub} の席を入力`;
+    }
+    renderSide();
   });
   const toEditor = document.getElementById("ni-to-editor");
   if (toEditor) {
@@ -952,6 +1003,86 @@ function renderEditor() {
   renderSide();
 }
 
+/* ── Confirm Side Preview (Phase 4) ── */
+
+let confirmViewTable = null;
+
+function buildConfirmSidePreview() {
+  const club = selectedClub;
+  if (!club) return "";
+  const eligibleSeats = clubEligibleSeats(club);
+  const tableIds = Object.keys(eligibleSeats).sort((a, b) => {
+    const na = parseInt(a, 10);
+    const nb = parseInt(b, 10);
+    if (!isNaN(na) && !isNaN(nb)) return na - nb;
+    return a.localeCompare(b, "ja");
+  });
+  if (!tableIds.length) return "";
+
+  /* Pick initial table: lastEditedTable → first with changes → first */
+  if (!confirmViewTable || !tableIds.includes(confirmViewTable)) {
+    if (lastEditedTable && tableIds.includes(lastEditedTable)) {
+      confirmViewTable = lastEditedTable;
+    } else {
+      const firstChanged = tableIds.find((t) => {
+        const seats = eligibleSeats[t] || [];
+        return seats.some((s) => {
+          const e = getEntry(t, s);
+          return e.surname || e.given;
+        });
+      });
+      confirmViewTable = firstChanged || tableIds[0];
+    }
+  }
+  const activeTable = confirmViewTable;
+
+  const tableChips = tableIds.length > 1
+    ? `<div class="vsm-table-chips" style="margin-bottom:10px;">${tableIds.map((t) =>
+        `<button class="vsm-table-chip${t === activeTable ? " is-current" : ""}" data-confirm-side-table="${escHtml(t)}">${escHtml(t)}番</button>`
+      ).join("")}</div>`
+    : "";
+
+  const diagram = buildCompleteSeatDiagram(club, activeTable);
+  const deletes = deletedRemoteEntriesForClub(club);
+  const deleteSet = new Set(deletes.map((d) => stateKey(d.tableId, d.seat)));
+
+  /* Seat summary list for active table */
+  const seats = eligibleSeats[activeTable] || [];
+  const seatRows = seats.map((s) => {
+    const entry = getEntry(activeTable, s);
+    const name = [entry.surname, entry.given].filter(Boolean).join(" ");
+    const isDel = deleteSet.has(stateKey(activeTable, s));
+    let statusCls = "ni-confirm-row";
+    if (isDel) statusCls += " is-delete";
+    else if (name) statusCls += " has-name";
+    return `<div class="${statusCls}">
+      <span class="ni-confirm-key">${s}番席</span>
+      <span class="ni-confirm-val">${isDel ? '<span style="color:var(--danger)">削除</span>' : (name ? escHtml(name) : '<span style="color:var(--muted)">未入力</span>')}</span>
+    </div>`;
+  }).join("");
+
+  return `
+    <div class="ni-map-panel">
+      <div class="ni-map-header">確認 — ${escHtml(activeTable)}番テーブル</div>
+      <div class="ni-map-body">
+        ${tableChips}
+        ${diagram}
+        <div class="ni-confirm-section">${seatRows}</div>
+      </div>
+    </div>
+  `;
+}
+
+function bindConfirmSideEvents(container) {
+  container.querySelectorAll("[data-confirm-side-table]").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      confirmViewTable = chip.dataset.confirmSideTable;
+      renderSide();
+      /* Also sync confirm left side active table if applicable */
+    });
+  });
+}
+
 /* ── Screen: Confirm ── */
 
 function renderConfirm() {
@@ -978,7 +1109,7 @@ function renderConfirm() {
         </div>`).join("")
     : `<p class="ni-notice">入力されたデータがありません。</p>`;
   const deleteRows = deletes.length
-    ? `<p class="ni-section-title">削除する氏名 <span class="ni-entry-count">${deletes.length}</span></p>
+    ? `<p class="ni-section-title">削除する氏名 <span class="ni-entry-count">${deletes.length}名</span></p>
       <div class="ni-confirm-section">
         ${deletes.map((e) => `
           <div class="ni-confirm-row">
@@ -992,7 +1123,7 @@ function renderConfirm() {
     <h2 class="ni-page-title">確認</h2>
     <p class="ni-page-sub">${escHtml(selectedClub || "")} の内容で登録します</p>
     ${remoteNoticeHtml()}
-    <p class="ni-section-title">入力済み氏名 <span class="ni-entry-count">${entries.length}</span></p>
+    <p class="ni-section-title">入力済み氏名 <span class="ni-entry-count">${entries.length}名</span></p>
     <div class="ni-confirm-section">${confirmRows}</div>
     ${deleteRows}
     <div class="ni-actions">
@@ -1001,7 +1132,7 @@ function renderConfirm() {
     </div>
   `;
 
-  niSide.innerHTML = "";
+  confirmViewTable = null; /* reset so buildConfirmSidePreview picks best default */
   renderSide();
 
   document.getElementById("ni-do-confirm").addEventListener("click", submitSelectedClub);

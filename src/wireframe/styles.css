@@ -294,16 +294,24 @@ button, input, select { font: inherit; }
   background: var(--gold-wash); color: #6b4a00; font-size: 14px; font-weight: 700; text-align: center;
 }
 
+.venue-map-frame {
+  border: 2px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--wash);
+}
+.venue-map-frame-header {
+  background: var(--blue); color: var(--paper);
+  font-size: 13px; font-weight: 800; text-align: center;
+  padding: 4px 12px;
+}
+
 .map-scroll-area {
   overflow: auto; -webkit-overflow-scrolling: touch;
   scroll-padding: 88px;
-  border: 2px solid var(--line); border-radius: 14px; background: var(--wash);
   max-height: 520px;
 }
 
-.map-inner { position: relative; min-width: 684px; padding: 88px 92px 96px; }
+.map-inner { position: relative; min-width: 684px; padding: 40px 92px 96px; }
 
-/* Area headings: ステージ側, Sky Lounge */
+/* Area headings: Sky Lounge */
 .map-label { display: flex; align-items: center; justify-content: center; gap: 4px; margin: 0 auto 14px; padding: 4px 12px; border-radius: 6px; background: var(--blue); color: var(--paper); font-size: 13px; font-weight: 800; text-align: center; width: fit-content; }
 .map-label-sky { margin-top: -14px; margin-bottom: 14px; position: relative; z-index: 1; padding: 4px 16px; background: #6b4a00; }
 
@@ -482,10 +490,14 @@ button, input, select { font: inherit; }
 .vsel-box {
   margin-bottom: 10px; padding: 14px 16px; border-radius: 12px;
   background: var(--gold-wash); border: 2px solid var(--gold);
+  overflow: visible;
 }
 
 .vsel-head {
   color: var(--blue-dark); font-size: 20px; font-weight: 700; text-align: center; line-height: 1.5;
+}
+.vsel-head--compact {
+  text-align: left; font-size: 14px; font-weight: 700; line-height: 1.3;
 }
 
 .vsel-head strong { font-size: 22px; }
@@ -499,30 +511,39 @@ button, input, select { font: inherit; }
 }
 
 .vsel-grid {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 6px;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 6px;
 }
 
 .vsel-cell {
-  display: flex; align-items: flex-start; gap: 4px;
-  padding: 6px 8px; border: 2px solid var(--line); border-radius: 10px;
+  position: relative;
+  display: grid; grid-template-columns: 20px minmax(0, 1fr);
+  column-gap: 3px; align-items: start;
+  padding: 6px 5px; border: 2px solid var(--line); border-radius: 10px;
   background: var(--wash); color: var(--blue-dark);
   font-size: 14px; font-weight: 600; cursor: pointer;
   min-height: 40px;
 }
 
+.check-mark.check-mark--vsel {
+  position: absolute; top: -4px; left: -4px;
+  width: 14px; height: 14px;
+  font-size: 8px;
+  z-index: 3;
+}
+
 .vsel-cell-body {
   display: flex; flex-direction: column; gap: 1px;
-  min-width: 0; flex: 1;
+  min-width: 0;
 }
 
 .vsel-affiliation {
   font-size: 12px; font-weight: 600; color: var(--blue-dark);
-  white-space: normal; overflow: visible;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; word-break: keep-all;
 }
 
 .vsel-person {
   font-size: 12px; font-weight: 700; color: var(--ink);
-  white-space: normal; overflow: visible;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; word-break: keep-all;
 }
 
 .vsel-cell.is-selected { background: var(--gold); border-color: #c4850e; color: var(--paper); }
@@ -531,19 +552,20 @@ button, input, select { font: inherit; }
 
 .vsel-num {
   display: inline-flex; align-items: center; justify-content: center;
-  min-width: 22px; height: 22px; border-radius: 50%;
-  background: var(--blue); color: var(--paper); font-size: 12px; font-weight: 800; flex-shrink: 0;
+  min-width: 20px; height: 20px; border-radius: 50%;
+  background: var(--blue); color: var(--paper); font-size: 11px; font-weight: 800; flex-shrink: 0;
 }
 
 .vsel-cell.is-selected .vsel-num { background: var(--paper); color: var(--gold); }
 
 /* Visual Seatmap mode */
-.vsm-visual { margin-top: 8px; display: flex; flex-direction: column; align-items: center; }
+.vsm-visual { margin-top: 8px; display: flex; flex-direction: column; align-items: center; overflow: visible; padding: 40px 0; }
 
 .vsm-ring {
   position: relative;
-  width: 220px; height: 220px;
+  width: 240px; height: 240px;
   margin: 0 auto;
+  overflow: visible;
 }
 
 .vsm-table-center {
@@ -586,15 +608,25 @@ button, input, select { font: inherit; }
   box-shadow: 0 0 0 3px rgba(247,168,27,.4);
 }
 
-.vsm-chip-label {
-  position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+/* Standalone label layer — positioned independently at larger radius */
+.vsm-label {
+  position: absolute;
+  display: flex; flex-direction: column; gap: 0;
   font-size: 9px; font-weight: 700; color: var(--muted);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  max-width: 56px; text-align: center;
+  line-height: 1.15;
   pointer-events: none;
+  z-index: 1;
 }
+.vsm-label.is-selected { color: var(--blue-dark); font-weight: 800; }
 
-.vsm-chip.is-selected .vsm-chip-label { color: var(--blue-dark); font-weight: 800; }
+/* Direction-specific anchoring via transform from the radial position point */
+.vsm-label-top { transform: translate(-50%, -100%); text-align: center; white-space: nowrap; }
+.vsm-label-bottom { transform: translate(-50%, 0); text-align: center; white-space: nowrap; }
+.vsm-label-right { transform: translate(0, -50%); text-align: left; width: 80px; }
+.vsm-label-left { transform: translate(-100%, -50%); text-align: right; width: 80px; }
+
+.vsm-lbl-club { font-size: 8px; font-weight: 600; white-space: nowrap; }
+.vsm-lbl-person { font-size: 9px; font-weight: 700; overflow-wrap: break-word; }
 
 .vsm-detail {
   margin-top: 12px; padding: 10px 16px;
@@ -672,7 +704,7 @@ button, input, select { font: inherit; }
 
 .mg-card {
   position: relative;
-  padding: 8px 10px;
+  padding: 6px 8px;
   border: 2px solid var(--line);
   border-radius: 10px;
   background: var(--paper);
@@ -718,8 +750,8 @@ button, input, select { font: inherit; }
   align-items: baseline;
   gap: 4px;
   justify-content: center;
-  margin-bottom: 6px;
-  padding-bottom: 4px;
+  margin-bottom: 4px;
+  padding-bottom: 3px;
   border-bottom: 2px solid var(--blue);
 }
 
@@ -727,35 +759,45 @@ button, input, select { font: inherit; }
 .mg-header-label { color: var(--muted); font-size: 11px; font-weight: 700; }
 
 .mg-row {
-  display: flex; gap: 6px; align-items: baseline;
-  padding: 2px 0; border-bottom: 1px solid var(--wash);
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  column-gap: 3px;
+  align-items: baseline;
+  padding: 1px 0; border-bottom: 1px solid var(--wash);
 }
 .mg-row:last-child { border-bottom: none; }
 
 .mg-seat-num {
-  flex-shrink: 0; width: 22px;
   color: var(--blue); font-size: 12px; font-weight: 800; text-align: right;
+  line-height: 1.4; font-variant-numeric: tabular-nums;
 }
 
 .mg-row-main {
-  flex: 1 1 auto;
   min-width: 0;
   display: flex;
-  gap: 6px;
+  gap: 4px;
   align-items: baseline;
-  flex-wrap: wrap;
+}
+.mg-row-main.has-person {
+  flex-direction: column;
+  gap: 0;
 }
 
 .mg-row-name,
 .mg-row-person {
   min-width: 0;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: keep-all;
   font-size: 12px;
   line-height: 1.4;
 }
 
 .mg-row-name { color: var(--ink); font-weight: 600; }
 .mg-row-person { color: var(--blue-dark); font-weight: 700; }
+
+.mg-row-main.is-long-affiliation .mg-row-name { font-size: 11px; }
 
 .mg-empty { color: var(--muted); font-size: 13px; font-style: italic; text-align: center; padding: 4px 0; }
 
@@ -1174,8 +1216,13 @@ button, input, select { font: inherit; }
 }
 .modal-icon .check-mark { width: 32px; height: 32px; font-size: 18px; }
 .modal-title {
-  font-size: 18px; font-weight: 800; color: var(--ink); margin-bottom: 20px;
+  font-size: 18px; font-weight: 800; color: var(--ink); margin-bottom: 12px;
 }
+.modal-summary {
+  font-size: 13px; font-weight: 600; color: var(--blue-dark); line-height: 1.5;
+  margin-bottom: 6px; text-align: center;
+}
+.modal-summary:last-of-type { margin-bottom: 16px; }
 .modal-actions {
   display: flex; gap: 8px;
 }
@@ -1201,5 +1248,5 @@ button, input, select { font: inherit; }
   .map-cell { width: 52px; height: 52px; font-size: 13px; }
   .sky-spacer { width: 52px; height: 52px; }
   .member-grid { grid-template-columns: 1fr; }
-  .vsel-grid { grid-template-columns: repeat(2, 1fr); }
+  .vsel-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
