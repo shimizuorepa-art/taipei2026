@@ -224,6 +224,14 @@
   /* ── Apps Script endpoint mode: convert DELETE to POST action ── */
   if (!isLocalMode && configuredEndpoint && !isProductionUrl(configuredEndpoint)) {
     var origFetchForEndpoint = window.fetch;
+    function appsScriptPostOptions(body) {
+      return {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: body
+      };
+    }
+
     window.fetch = function (url, opts) {
       var urlStr = typeof url === "string" ? url : url.toString();
 
@@ -237,11 +245,13 @@
       var method = (opts && opts.method) ? opts.method.toUpperCase() : "GET";
       if (method === "DELETE" && urlStr.indexOf(configuredEndpoint) !== -1) {
         var params = parseDeleteParams(urlStr);
-        return origFetchForEndpoint(configuredEndpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/json; charset=utf-8" },
-          body: JSON.stringify({ action: "delete_name", table: params.table, seat: parseInt(params.seat, 10) })
-        });
+        return origFetchForEndpoint(configuredEndpoint, appsScriptPostOptions(
+          JSON.stringify({ action: "delete_name", table: params.table, seat: parseInt(params.seat, 10) })
+        ));
+      }
+
+      if (method === "POST" && urlStr.indexOf(configuredEndpoint) !== -1) {
+        return origFetchForEndpoint(configuredEndpoint, appsScriptPostOptions(opts && opts.body));
       }
 
       return origFetchForEndpoint.apply(window, arguments);
